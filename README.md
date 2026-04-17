@@ -1,0 +1,102 @@
+# Pi Homelab
+
+A self-hosted monitoring and network DNS stack running on a Raspberry Pi 4, 
+fully reachable over Tailscale. Metrics are scraped by Prometheus, visualized 
+in Grafana, and LAN DNS is filtered through Blocky over DNS-over-TLS to Quad9.
+
+## Stack
+
+| Service | Role | Port (Tailnet) |
+|---|---|---|
+| Blocky | DNS with ad-blocking, DoT upstream to Quad9 | 53 |
+| Prometheus | Metrics storage and scraping | internal |
+| Grafana | Dashboards | 3000 |
+| node_exporter | Host metrics | internal |
+| cAdvisor | Container metrics | internal |
+| Tailscale | Zero-trust network overlay | (host) |
+
+## Architecture
+
+\`\`\`mermaid
+flowchart LR
+    subgraph Tailnet
+        Client[Tailnet Device]
+    end
+    subgraph Pi4[Raspberry Pi 4 - Pi OS Lite 64-bit]
+        TS[Tailscale<br/>host install]
+        subgraph Docker
+            Blocky
+            Prom[Prometheus]
+            Graf[Grafana]
+            NE[node_exporter]
+            CA[cAdvisor]
+        end
+    end
+    Client -->|DNS :53| TS --> Blocky
+    Client -->|HTTP :3000| TS --> Graf
+    Blocky -->|DoT :853| Quad9[(Quad9)]
+    Prom --> Blocky
+    Prom --> NE
+    Prom --> CA
+    Graf --> Prom
+\`\`\`
+
+## Prerequisites
+
+- Raspberry Pi 4 running 64-bit Pi OS Lite
+- A Tailscale account
+- (Optional) USB SSD or thumb drive for Docker data-root
+
+## Setup
+
+1. Clone and configure:
+   \`\`\`bash
+   git clone https://github.com/<you>/homelab.git
+   cd homelab
+   cp .env.example .env
+   # edit .env: set TS_IP, GRAFANA_ADMIN_PASSWORD, TZ
+   \`\`\`
+
+2. Install Tailscale on the host:
+   \`\`\`bash
+   curl -fsSL https://tailscale.com/install.sh | sh
+   sudo tailscale up --ssh
+   tailscale ip -4   # copy this into .env as TS_IP
+   \`\`\`
+
+3. Install Docker:
+   \`\`\`bash
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker $USER
+   # log out and back in
+   \`\`\`
+
+4. Launch:
+   \`\`\`bash
+   docker compose up -d
+   \`\`\`
+
+5. In the Tailscale admin console → **DNS**, add the Pi's Tailscale IP as a 
+   global nameserver and toggle **Override local DNS**.
+
+## Access
+
+- Grafana: `http://<tailscale-ip>:3000`
+- Blocky metrics: `http://<tailscale-ip>:4000/metrics` (if published)
+- Prometheus: internal only; query via Grafana
+
+## Dashboards
+
+Import the following by ID in Grafana → Dashboards → New → Import:
+
+- **1860** — Node Exporter Full
+- **14282** — cAdvisor
+- **13768** — Blocky
+
+## Screenshots
+
+<!-- Add screenshots of your Grafana dashboards here -->
+
+## License
+
+MIT

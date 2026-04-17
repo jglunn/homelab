@@ -1,0 +1,34 @@
+bootstrapDns:
+  - upstream: 9.9.9.9
+  - upstream: 149.112.112.112
+
+upstreams:
+  groups:
+    default:
+      - tcp-tls:dns.quad9.net
+
+blocking:
+  denylists:
+    ads:
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+  clientGroupsBlock:
+    default: [ads]
+  blockType: zeroIp
+  loading:
+    refreshPeriod: 24h
+
+caching:
+  minTime: 5m
+  maxTime: 30m
+  prefetching: true
+
+ports:
+  dns: 53
+  http: 4000
+
+log:
+  level: info
+
+prometheus:
+  enable: true
+  path: /metrics
