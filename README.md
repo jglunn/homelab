@@ -1,6 +1,6 @@
 # Pi Homelab
 
-A self-hosted monitoring and network DNS stack running on a Raspberry Pi 4, fully reachable over Tailscale. Metrics are scraped by Prometheus, visualized in Grafana, and Tailnet DNS is filtered through Blocky over DNS-over-TLS to Quad9.
+A self-hosted monitoring and network DNS stack running on a Raspberry Pi 4, fully reachable over Tailscale. Metrics are scraped by Prometheus, visualized in Grafana, and Tailnet DNS is filtered through Blocky.
 
 ## Stack
 
