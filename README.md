@@ -13,31 +13,6 @@ A self-hosted monitoring and network DNS stack running on a Raspberry Pi 4, full
 | cAdvisor | Container metrics | internal |
 | Tailscale | Zero-trust network overlay | (host) |
 
-## Architecture
-
-```mermaid
-flowchart LR
-    Client[Tailnet Device]
-    subgraph Pi4[Raspberry Pi 4 — Pi OS Lite 64-bit]
-        TS[Tailscale<br/>host install]
-        subgraph Docker
-            Blocky
-            Prom[Prometheus]
-            Graf[Grafana]
-            NE[node_exporter]
-            CA[cAdvisor]
-        end
-    end
-    Quad9[(Quad9)]
-    Client -->|DNS :53| TS --> Blocky
-    Client -->|HTTP :3000| TS --> Graf
-    Blocky -->|DoT :853| Quad9
-    Prom --> Blocky
-    Prom --> NE
-    Prom --> CA
-    Graf --> Prom
-```
-
 ## Setup
 
 1. Clone and configure:
@@ -86,10 +61,6 @@ Import the following by ID in Grafana → Dashboards → New → Import:
 - **1860** — Node Exporter Full
 - **14282** — cAdvisor
 - **13768** — Blocky
-
-## Screenshots
-
-<!-- Add screenshots of your Grafana dashboards here once you have data -->
 
 ## License
 
