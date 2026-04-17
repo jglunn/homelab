@@ -1,2 +1,1 @@
 curl -fsSL https://raw.githubusercontent.com/licenses/license-templates/master/templates/mit.txt > LICENSE
-# then edit the {{year}} and {{organization}} placeholders
