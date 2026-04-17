@@ -38,12 +38,6 @@ flowchart LR
     Graf --> Prom
 ```
 
-## Prerequisites
-
-- Raspberry Pi 4 running 64-bit Pi OS Lite
-- A Tailscale account
-- (Optional) USB SSD for Docker data-root
-
 ## Setup
 
 1. Clone and configure:
