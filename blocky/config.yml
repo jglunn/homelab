@@ -1,3 +1,4 @@
+#Since the upstream uses a hostname instead of a raw IP, this resolves the chicken-and-egg problem
 bootstrapDns:
   - upstream: 9.9.9.9
   - upstream: 149.112.112.112
