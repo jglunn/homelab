@@ -1,6 +1,6 @@
 services:
   blocky:
-    image: ghcr.io/0xerr0r/blocky:latest
+    image: ghcr.io/0xerr0r/blocky:v0.29.0
     container_name: blocky
     restart: unless-stopped
     ports:
@@ -13,7 +13,7 @@ services:
       - TZ=${TZ}
 
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.11.1
     container_name: node-exporter
     restart: unless-stopped
     command:
@@ -25,7 +25,7 @@ services:
     networks: [homelab]
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
+    image: ghcr.io/google/cadvisor:0.56.2
     container_name: cadvisor
     restart: unless-stopped
     privileged: true
@@ -39,7 +39,7 @@ services:
     networks: [homelab]
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.11.0
     container_name: prometheus
     restart: unless-stopped
     command:
@@ -55,7 +55,7 @@ services:
     depends_on: [blocky, node-exporter, cadvisor]
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.4
     container_name: grafana
     restart: unless-stopped
     ports:
