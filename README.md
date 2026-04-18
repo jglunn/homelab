@@ -84,7 +84,7 @@ docker compose ps   # verify all services reach healthy state
 - **Dashboards as code** — committed JSON under `grafana/provisioning/dashboards/`, with datasource variables pre-resolved
 - **Log rotation** — 10MB × 3 files per service to protect the SD card
 - **`no-new-privileges`** on every non-privileged container
-- **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager webhooks push to your phone via [ntfy.sh](https://ntfy.sh) with no bridge service needed
+- **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager pushes firing and resolved notifications to [ntfy.sh](https://ntfy.sh), formatted via ntfy message templates so pushes read as text rather than raw JSON (no bridge service needed)
 
 ## Screenshots
 
