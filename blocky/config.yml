@@ -1,4 +1,10 @@
-#Since the upstream uses a hostname instead of a raw IP, this resolves the chicken-and-egg problem
+# Blocky DNS resolver:
+# - DoT upstream to Quad9 for encrypted resolution
+# - Ad-blocking via StevenBlack's consolidated hosts list, refreshed every 24h
+# - Prometheus metrics exposed on :4000/metrics
+
+# bootstrapDns uses raw Quad9 IPs so the resolver can reach dns.quad9.net
+# before any DNS is available (chicken-and-egg on first start).
 bootstrapDns:
   - upstream: 9.9.9.9
   - upstream: 149.112.112.112
