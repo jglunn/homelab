@@ -99,6 +99,7 @@ services:
       - '--web.enable-lifecycle'
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
     networks: [homelab]
     depends_on:
@@ -122,6 +123,39 @@ services:
         limits:
           memory: 256m
           cpus: '0.5'
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: alertmanager
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "https://ntfy.sh/$${NTFY_TOPIC}" > /tmp/ntfy_url
+        exec /bin/alertmanager \
+          --config.file=/etc/alertmanager/alertmanager.yml \
+          --storage.path=/alertmanager
+    environment:
+      - NTFY_TOPIC=${NTFY_TOPIC}
+    volumes:
+      - ./alertmanager/config.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    networks: [homelab]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: '0.2'
 
   grafana:
     image: grafana/grafana:12.4.3
@@ -163,3 +197,4 @@ networks:
 volumes:
   prometheus-data:
   grafana-data:
+  alertmanager-data:

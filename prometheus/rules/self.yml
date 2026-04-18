@@ -1,0 +1,11 @@
+groups:
+  - name: self
+    rules:
+      - alert: PrometheusRuleEvalFailing
+        expr: increase(prometheus_rule_evaluation_failures_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus rule evaluations are failing"
+          description: "{{ $value }} rule evaluation failures in the last 10 minutes on {{ $labels.instance }}."

@@ -1,0 +1,20 @@
+groups:
+  - name: containers
+    rules:
+      - alert: ContainerOOMKilled
+        expr: increase(container_oom_events_total{name!=""}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} was OOM-killed"
+          description: "Container {{ $labels.name }} has been OOM-killed in the last 5 minutes."
+
+      - alert: ContainerRestartLoop
+        expr: changes(container_start_time_seconds{name!=""}[10m]) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting repeatedly"
+          description: "Container {{ $labels.name }} restarted {{ $value }} times in the last 10 minutes."

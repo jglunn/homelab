@@ -13,6 +13,7 @@ flowchart LR
     N[node-exporter] --> P
     C[cAdvisor] --> P
     P --> G
+    P --> AM[Alertmanager] --> NT[ntfy.sh] --> Phone
 ```
 
 Blocky and Grafana are bound to the host's Tailscale IP. Prometheus, node-exporter, and cAdvisor are reachable only inside the Docker bridge network.
@@ -23,6 +24,7 @@ Blocky and Grafana are bound to the host's Tailscale IP. Prometheus, node-export
 |---|---|---|
 | Blocky | DNS with ad-blocking, DoT upstream to Quad9 | 53 |
 | Prometheus | Metrics storage and scraping | internal |
+| Alertmanager | Alert routing to ntfy.sh push notifications | internal |
 | Grafana | Dashboards (provisioned as code) | 3000 |
 | node-exporter | Host metrics | internal |
 | cAdvisor | Container metrics | internal |
@@ -37,8 +39,12 @@ Tailscale runs on the host, not in the compose stack, and provides the zero-trus
 git clone https://github.com/jglunn/homelab.git
 cd homelab
 cp .env.example .env
-# edit .env: set TS_IP, GRAFANA_ADMIN_PASSWORD, TZ
+# edit .env: set TS_IP, GRAFANA_ADMIN_PASSWORD, TZ, NTFY_TOPIC
 ```
+
+Pick a random, unguessable string for `NTFY_TOPIC` — anyone with the topic name
+can read your alerts. Install the [ntfy app](https://ntfy.sh) on your phone and
+subscribe to the same topic to receive pushes.
 
 2. Install Tailscale on the host:
 
@@ -78,6 +84,7 @@ docker compose ps   # verify all services reach healthy state
 - **Dashboards as code** — committed JSON under `grafana/provisioning/dashboards/`, with datasource variables pre-resolved
 - **Log rotation** — 10MB × 3 files per service to protect the SD card
 - **`no-new-privileges`** on every non-privileged container
+- **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager webhooks push to your phone via [ntfy.sh](https://ntfy.sh) with no bridge service needed
 
 ## Screenshots
 

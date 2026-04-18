@@ -1,0 +1,38 @@
+groups:
+  - name: host
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
+          description: "Prometheus has been unable to scrape {{ $labels.instance }} ({{ $labels.job }}) for more than 5 minutes."
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory available below 15%"
+          description: "{{ $labels.instance }} has less than 15% memory available ({{ $value | humanizePercentage }}) for over 10 minutes."
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root filesystem below 15% free"
+          description: "{{ $labels.instance }} root filesystem has {{ $value | humanizePercentage }} space available."
+
+      - alert: HighLoadAverage
+        expr: node_load15 > count by (instance) (node_cpu_seconds_total{mode="idle"})
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "15-minute load average exceeds CPU count"
+          description: "{{ $labels.instance }} load15 is {{ $value | printf \"%.2f\" }}, above its CPU count, for over 15 minutes."

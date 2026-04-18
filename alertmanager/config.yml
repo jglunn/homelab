@@ -1,0 +1,23 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: ntfy
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: ntfy
+      repeat_interval: 1h
+
+receivers:
+  - name: ntfy
+    webhook_configs:
+      # url_file is used because Alertmanager does not expand env vars in its
+      # config. The entrypoint in docker-compose.yml writes https://ntfy.sh/$NTFY_TOPIC
+      # to this path at container start, keeping the topic out of the tracked config.
+      - url_file: /tmp/ntfy_url
+        send_resolved: true
