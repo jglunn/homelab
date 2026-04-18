@@ -12,7 +12,7 @@ services:
     environment:
       - TZ=${TZ}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/metrics"]
+      test: ["CMD", "/app/blocky", "healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 5
