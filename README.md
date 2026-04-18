@@ -88,9 +88,13 @@ docker compose ps   # verify all services reach healthy state
 
 ## Screenshots
 
-<img width="1573" height="821" alt="image" src="https://github.com/user-attachments/assets/cb118d45-cd39-478c-bd4c-b5d3676f4fef" />
+<img width="1624" height="805" alt="image" src="https://github.com/user-attachments/assets/d9678325-b60d-4e46-8917-dd74443e4014" />
 <img width="1586" height="824" alt="image" src="https://github.com/user-attachments/assets/4c806e48-4139-4db5-b26f-4d3120cad6bc" />
 <img width="996" height="166" alt="image" src="https://github.com/user-attachments/assets/d0a6e673-9315-4c0e-8046-7518d10aadb9" />
+<img width="585" height="628" alt="image" src="https://github.com/user-attachments/assets/a1a19953-ec3e-4414-9858-d58e7643d201" />
+
+
+
 
 ## License
 
