@@ -11,6 +11,17 @@ services:
     networks: [homelab]
     environment:
       - TZ=${TZ}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.3'
 
   node-exporter:
     image: prom/node-exporter:v1.11.1
@@ -23,6 +34,17 @@ services:
     volumes:
       - /:/host:ro,rslave
     networks: [homelab]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: '0.1'
 
   cadvisor:
     image: ghcr.io/google/cadvisor:0.56.2
@@ -37,6 +59,17 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
     networks: [homelab]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+          cpus: '0.5'
 
   prometheus:
     image: prom/prometheus:v3.11.0
@@ -52,7 +85,24 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks: [homelab]
-    depends_on: [blocky, node-exporter, cadvisor]
+    depends_on:
+      blocky:
+        condition: service_healthy
+      node-exporter:
+        condition: service_healthy
+      cadvisor:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
 
   grafana:
     image: grafana/grafana:12.4
@@ -69,7 +119,20 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
     networks: [homelab]
-    depends_on: [prometheus]
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+          cpus: '0.5'
 
 networks:
   homelab:
