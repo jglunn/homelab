@@ -62,6 +62,12 @@ Import the following by ID in Grafana → Dashboards → New → Import:
 - **14282** — cAdvisor
 - **13768** — Blocky
 
+## Screenshots
+<img width="1573" height="821" alt="image" src="https://github.com/user-attachments/assets/cb118d45-cd39-478c-bd4c-b5d3676f4fef" />
+<img width="1586" height="824" alt="image" src="https://github.com/user-attachments/assets/4c806e48-4139-4db5-b26f-4d3120cad6bc" />
+<img width="996" height="166" alt="image" src="https://github.com/user-attachments/assets/d0a6e673-9315-4c0e-8046-7518d10aadb9" />
+
+
 ## License
 
 MIT
