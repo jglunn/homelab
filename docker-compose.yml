@@ -132,7 +132,13 @@ services:
       - /bin/sh
       - -c
       - |
-        echo "https://ntfy.sh/$${NTFY_TOPIC}" > /tmp/ntfy_url
+        # ntfy's tpl=yes renders Go templates against the Alertmanager JSON
+        # so the push reads as "FIRING: <alertname>" / "[severity] summary\ndesc"
+        # instead of a raw JSON blob. Query-param values are URL-encoded.
+        URL="https://ntfy.sh/$${NTFY_TOPIC}?tpl=yes"
+        URL="$${URL}&title=%7B%7B%20if%20eq%20.status%20%22firing%22%20%7D%7DFIRING%7B%7B%20else%20%7D%7DRESOLVED%7B%7B%20end%20%7D%7D%3A%20%7B%7B%20.commonLabels.alertname%20%7D%7D"
+        URL="$${URL}&message=%7B%7B%20range%20.alerts%20%7D%7D%5B%7B%7B%20.labels.severity%20%7D%7D%5D%20%7B%7B%20.annotations.summary%20%7D%7D%0A%7B%7B%20.annotations.description%20%7D%7D%0A%0A%7B%7B%20end%20%7D%7D"
+        echo "$${URL}" > /tmp/ntfy_url
         exec /bin/alertmanager \
           --config.file=/etc/alertmanager/alertmanager.yml \
           --storage.path=/alertmanager
