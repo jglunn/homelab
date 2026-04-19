@@ -60,6 +60,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
 
+    do_HEAD = do_GET
+
     def do_POST(self):
         if self.path != "/hook":
             self.send_response(404)
