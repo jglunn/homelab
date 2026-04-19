@@ -16,8 +16,5 @@ route:
 receivers:
   - name: ntfy
     webhook_configs:
-      # url_file is used because Alertmanager does not expand env vars in its
-      # config. The entrypoint in docker-compose.yml writes https://ntfy.sh/$NTFY_TOPIC
-      # to this path at container start, keeping the topic out of the tracked config.
-      - url_file: /tmp/ntfy_url
+      - url: http://ntfy-bridge:8080/hook
         send_resolved: true

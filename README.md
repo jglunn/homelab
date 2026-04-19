@@ -13,7 +13,7 @@ flowchart LR
     N[node-exporter] --> P
     C[cAdvisor] --> P
     P --> G
-    P --> AM[Alertmanager] --> NT[ntfy.sh] --> Phone
+    P --> AM[Alertmanager] --> BR[ntfy-bridge] --> NT[ntfy.sh] --> Phone
 ```
 
 Blocky and Grafana are bound to the host's Tailscale IP. Prometheus, node-exporter, and cAdvisor are reachable only inside the Docker bridge network.
@@ -25,6 +25,7 @@ Blocky and Grafana are bound to the host's Tailscale IP. Prometheus, node-export
 | Blocky | DNS with ad-blocking, DoT upstream to Quad9 | 53 |
 | Prometheus | Metrics storage and scraping | internal |
 | Alertmanager | Alert routing to ntfy.sh push notifications | internal |
+| ntfy-bridge | Translates Alertmanager webhooks into ntfy.sh pushes | internal |
 | Grafana | Dashboards (provisioned as code) | 3000 |
 | node-exporter | Host metrics | internal |
 | cAdvisor | Container metrics | internal |
@@ -84,7 +85,7 @@ docker compose ps   # verify all services reach healthy state
 - **Dashboards as code** — committed JSON under `grafana/provisioning/dashboards/`, with datasource variables pre-resolved
 - **Log rotation** — 10MB × 3 files per service to protect the SD card
 - **`no-new-privileges`** on every non-privileged container
-- **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager pushes firing and resolved notifications to [ntfy.sh](https://ntfy.sh), formatted via ntfy message templates so pushes read as text rather than raw JSON (no bridge service needed)
+- **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager pushes firing and resolved notifications to [ntfy.sh](https://ntfy.sh) via a small bridge service (`ntfy-bridge/bridge.py`, ~60 lines of stdlib Python) that formats the Alertmanager webhook into a readable title and body
 
 ## Screenshots
 

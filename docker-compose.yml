@@ -124,30 +124,42 @@ services:
           memory: 256m
           cpus: '0.5'
 
+  ntfy-bridge:
+    image: python:3.12-alpine
+    container_name: ntfy-bridge
+    restart: unless-stopped
+    command: ["python", "-u", "/app/bridge.py"]
+    environment:
+      - NTFY_TOPIC=${NTFY_TOPIC}
+    volumes:
+      - ./ntfy-bridge/bridge.py:/app/bridge.py:ro
+    networks: [homelab]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 48m
+          cpus: '0.1'
+
   alertmanager:
     image: prom/alertmanager:v0.28.1
     container_name: alertmanager
     restart: unless-stopped
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        # ntfy's tpl=yes renders Go templates against the Alertmanager JSON
-        # so the push reads as "FIRING: <alertname>" / "[severity] summary\ndesc"
-        # instead of a raw JSON blob. Query-param values are URL-encoded.
-        URL="https://ntfy.sh/$${NTFY_TOPIC}?tpl=yes"
-        URL="$${URL}&title=%7B%7B%20if%20eq%20.status%20%22firing%22%20%7D%7DFIRING%7B%7B%20else%20%7D%7DRESOLVED%7B%7B%20end%20%7D%7D%3A%20%7B%7B%20.commonLabels.alertname%20%7D%7D"
-        URL="$${URL}&message=%7B%7B%20if%20eq%20.status%20%22firing%22%20%7D%7D%7B%7B%20range%20.alerts%20%7D%7D%5B%7B%7B%20.labels.severity%20%7D%7D%5D%20%7B%7B%20.annotations.summary%20%7D%7D%0A%7B%7B%20.annotations.description%20%7D%7D%0A%0A%7B%7B%20end%20%7D%7D%7B%7B%20else%20%7D%7D%7B%7B%20range%20.alerts%20%7D%7D%7B%7B%20.annotations.summary%20%7D%7D%20%28resolved%29%0A%7B%7B%20end%20%7D%7D%7B%7B%20end%20%7D%7D"
-        echo "$${URL}" > /tmp/ntfy_url
-        exec /bin/alertmanager \
-          --config.file=/etc/alertmanager/alertmanager.yml \
-          --storage.path=/alertmanager
-    environment:
-      - NTFY_TOPIC=${NTFY_TOPIC}
     volumes:
       - ./alertmanager/config.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
     networks: [homelab]
+    depends_on:
+      ntfy-bridge:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
       interval: 10s
