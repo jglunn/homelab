@@ -35,29 +35,19 @@ services:
           memory: 128m
           cpus: '0.3'
 
-  # Runs in the host network namespace so /proc/net/* reflects the host's
-  # real interfaces (wlan0, eth0, tailscale0) — without host netns, netdev
-  # metrics would only cover the container's veth on the docker bridge.
-  # Listens on the homelab bridge gateway IP (172.28.0.1) instead of 0.0.0.0
-  # to keep port 9100 off the Pi's LAN/Tailscale interfaces.
   node-exporter:
     image: prom/node-exporter:v1.11.1
     container_name: node-exporter
     restart: unless-stopped
     command:
       - '--path.rootfs=/host'
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-      - '--web.listen-address=172.28.0.1:9100'
-    network_mode: host
     pid: host
     volumes:
       - /:/host:ro,rslave
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
+    networks: [homelab]
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://172.28.0.1:9100/metrics"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -221,12 +211,6 @@ services:
 networks:
   homelab:
     driver: bridge
-    ipam:
-      config:
-        # Pinned so node-exporter (host netns) can bind to the gateway IP;
-        # see the node-exporter service for why.
-        - subnet: 172.28.0.0/24
-          gateway: 172.28.0.1
 
 volumes:
   prometheus-data:
