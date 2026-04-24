@@ -1,18 +1,10 @@
 groups:
   - name: dns
     rules:
-      - alert: BlockyDown
-        expr: up{job="blocky"} == 0
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Blocky DNS is down"
-          description: "Blocky has been unreachable for more than 2 minutes. Tailnet DNS resolution is likely failing."
-
       # Blocky exposes the last-refresh time as a unix-timestamp gauge. The
       # metric name is `blocky_last_list_group_refresh_timestamp_seconds` on
       # Blocky v0.29; if an upgrade renames it, adjust here.
+      # Blocky-down is covered by the generic `InstanceDown` rule in host.yml.
       - alert: BlocklistStale
         expr: (time() - blocky_last_list_group_refresh_timestamp_seconds) > 172800
         labels:
