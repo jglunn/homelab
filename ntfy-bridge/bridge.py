@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import urllib.request
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 NTFY_TOPIC = os.environ["NTFY_TOPIC"]
 NTFY_URL = f"https://ntfy.sh/{NTFY_TOPIC}"
@@ -81,10 +81,13 @@ class Handler(BaseHTTPRequestHandler):
             },
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            log.info("pushed %s -> ntfy (%d)", title, resp.status)
-
-        self.send_response(204)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                log.info("pushed %s -> ntfy (%d)", title, resp.status)
+            self.send_response(204)
+        except Exception:
+            log.exception("ntfy push failed: %s", title)
+            self.send_response(502)
         self.end_headers()
 
     def log_message(self, *_):
@@ -92,4 +95,4 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
