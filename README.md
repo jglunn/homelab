@@ -33,34 +33,34 @@ Tailscale runs on the host, not in the compose stack, and provides the zero-trus
 
 ## Setup
 
-1. Clone and configure:
-
-```bash
-git clone https://github.com/jglunn/homelab.git
-cd homelab
-cp .env.example .env
-# edit .env: set TS_IP, GRAFANA_ADMIN_PASSWORD, TZ, NTFY_TOPIC
-```
-
-Pick a random, unguessable string for `NTFY_TOPIC` — anyone with the topic name
-can read your alerts. Install the [ntfy app](https://ntfy.sh) on your phone and
-subscribe to the same topic to receive pushes.
-
-2. Install Tailscale on the host:
+1. Install Tailscale on the host:
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up --ssh
-tailscale ip -4   # copy this into .env as TS_IP
+tailscale ip -4   # note this IP; it becomes TS_IP in step 3
 ```
 
-3. Install Docker:
+2. Install Docker:
 
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 # log out and back in
 ```
+
+3. Clone and configure:
+
+```bash
+git clone https://github.com/jglunn/homelab.git
+cd homelab
+cp .env.example .env
+# edit .env: set TS_IP (from step 1), GRAFANA_ADMIN_PASSWORD, TZ, NTFY_TOPIC
+```
+
+Pick a random, unguessable string for `NTFY_TOPIC` — anyone with the topic name
+can read your alerts. Install the [ntfy app](https://ntfy.sh) on your phone and
+subscribe to the same topic to receive pushes.
 
 4. Launch:
 
@@ -76,27 +76,47 @@ docker compose ps   # verify all services reach healthy state
 - **Grafana**: `http://<tailscale-ip>:3000` — three dashboards (Node Exporter Full, cAdvisor, Blocky) are provisioned automatically on first boot
 - **Prometheus and exporters**: internal only, query via Grafana
 
+## Operating
+
+- **Upgrade** — bump the image tags in `docker-compose.yml`, then:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+- **Change alert rules** — edit `prometheus/rules/`, check and test the files (see [Testing alert rules](#testing-alert-rules)), then reload Prometheus in place without a restart:
+
+```bash
+docker compose kill -s HUP prometheus
+```
+
+- **Grafana admin password** — `GRAFANA_ADMIN_PASSWORD` only applies on first boot, when the `grafana-data` volume is created. Change it later in the Grafana UI, or with:
+
+```bash
+docker compose exec grafana grafana cli admin reset-admin-password <new-password>
+```
+
 ## Configuration highlights
 
 - **Tailscale-only port binding** — ports are bound to `${TS_IP}` not `0.0.0.0`, so nothing is exposed on the public interface
 - **Per-service resource limits** — memory and CPU caps prevent any one service from starving the Pi
-- **Healthchecks with `service_healthy` dependencies** — Prometheus waits for exporters; Grafana waits for Prometheus
+- **Healthchecks on every service** — status shows in `docker compose ps`, but start-up is not gated on it: an unhealthy exporter can't keep Prometheus and Grafana down, and Prometheus alerts on the missing target via `InstanceDown` instead
 - **Dashboards as code** — committed JSON under `grafana/provisioning/dashboards/`, with datasource variables pre-resolved
 - **Log rotation** — 10MB × 3 files per service to protect the SD card
-- **`no-new-privileges`** on every non-privileged container
+- **`no-new-privileges`** on every container
 - **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager posts its webhook JSON straight to [ntfy.sh](https://ntfy.sh), which formats it with ntfy's built-in `alertmanager` template (server ≥ 2.14). A `Priority` header maps severity to push priority (critical → urgent, re-notified hourly; everything else → high), and resolved notifications are sent too. The topic never touches a tracked file: Compose renders `https://ntfy.sh/${NTFY_TOPIC}` from `.env` into the container as an inline `configs` entry, which Alertmanager reads via `url_file`
 
 ## Testing alert rules
 
-`promtool` ships in the Prometheus image, so rule files can be syntax-checked and unit-tested without installing anything on the host. Unit tests live in `prometheus/rules/tests/` and run against the same bind mount the Prometheus container uses; `--no-deps` keeps compose from starting the exporters just to run a check.
+`promtool` ships in the Prometheus image, so rule files can be syntax-checked and unit-tested without installing anything on the host. Unit tests live in `prometheus/rules/tests/` and run against the same bind mount the Prometheus container uses.
 
 ```bash
 # Syntax-check every rule file
-docker compose run --rm --no-deps --entrypoint sh prometheus \
+docker compose run --rm --entrypoint sh prometheus \
   -c 'promtool check rules /etc/prometheus/rules/*.yml'
 
 # Run the rule unit tests
-docker compose run --rm --no-deps --entrypoint sh prometheus \
+docker compose run --rm --entrypoint sh prometheus \
   -c 'promtool test rules /etc/prometheus/rules/tests/*_test.yml'
 ```
 
