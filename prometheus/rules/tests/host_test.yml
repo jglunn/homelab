@@ -1,0 +1,60 @@
+# promtool unit tests for prometheus/rules/host.yml.
+#
+# Paths in rule_files are resolved relative to this file, so the tests run the
+# same way from a checkout (promtool test rules prometheus/rules/tests/host_test.yml)
+# and inside the Prometheus container (see "Testing alert rules" in the README).
+#
+# This directory is deliberately outside the /etc/prometheus/rules/*.yml glob
+# in prometheus.yml, so Prometheus never tries to load these as rule files.
+rule_files:
+  - ../host.yml
+
+evaluation_interval: 1m
+
+tests:
+  # Regression test: node_load15 carries {instance, job}, so the right-hand
+  # side of the comparison must keep both labels or the vector match yields
+  # nothing and the alert can never fire.
+  - name: HighLoadAverage fires when load15 exceeds the CPU count
+    interval: 1m
+    input_series:
+      - series: 'node_load15{instance="node-exporter:9100", job="node"}'
+        values: '10x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="0", mode="idle"}'
+        values: '0+1x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="1", mode="idle"}'
+        values: '0+1x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="2", mode="idle"}'
+        values: '0+1x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="3", mode="idle"}'
+        values: '0+1x40'
+    alert_rule_test:
+      # Still inside the 15m "for" window: pending, not firing.
+      - eval_time: 10m
+        alertname: HighLoadAverage
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: HighLoadAverage
+        exp_alerts:
+          - exp_labels: {instance: "node-exporter:9100", job: "node", severity: "warning"}
+            exp_annotations:
+              summary: "15-minute load average exceeds CPU count"
+              description: "node-exporter:9100 load15 is 10.00, above its CPU count, for over 15 minutes."
+
+  - name: HighLoadAverage stays quiet when load15 does not exceed the CPU count
+    interval: 1m
+    input_series:
+      - series: 'node_load15{instance="node-exporter:9100", job="node"}'
+        values: '4x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="0", mode="idle"}'
+        values: '0+1x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="1", mode="idle"}'
+        values: '0+1x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="2", mode="idle"}'
+        values: '0+1x40'
+      - series: 'node_cpu_seconds_total{instance="node-exporter:9100", job="node", cpu="3", mode="idle"}'
+        values: '0+1x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: HighLoadAverage
+        exp_alerts: []
