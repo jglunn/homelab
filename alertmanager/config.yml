@@ -3,18 +3,35 @@ global:
 
 route:
   receiver: ntfy
-  group_by: ['alertname', 'severity']
+  group_by: ['alertname']
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 12h
   routes:
-    - matchers:
-        - severity="critical"
-      receiver: ntfy
+    - matchers: [severity="critical"]
+      receiver: ntfy-critical
       repeat_interval: 1h
 
+# Alertmanager posts its webhook JSON directly to ntfy.sh. The `Template` header
+# selects ntfy's built-in `alertmanager` template (ntfy server >= 2.14.0), which
+# formats the payload into a readable title and body. That template does not set
+# a priority, so the `Priority` header carries the severity mapping instead.
+# The URL (https://ntfy.sh/<NTFY_TOPIC>) is rendered by Compose from .env into
+# /etc/alertmanager/ntfy_url so the topic stays out of tracked files.
 receivers:
   - name: ntfy
     webhook_configs:
-      - url: http://ntfy-bridge:8080/hook
+      - url_file: /etc/alertmanager/ntfy_url
         send_resolved: true
+        http_config:
+          http_headers:
+            Template: { values: [alertmanager] }
+            Priority: { values: [high] }
+  - name: ntfy-critical
+    webhook_configs:
+      - url_file: /etc/alertmanager/ntfy_url
+        send_resolved: true
+        http_config:
+          http_headers:
+            Template: { values: [alertmanager] }
+            Priority: { values: [urgent] }
