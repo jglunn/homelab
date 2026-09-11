@@ -29,7 +29,7 @@ groups:
           description: "{{ $labels.instance }} root filesystem has {{ $value | humanizePercentage }} space available."
 
       - alert: HighLoadAverage
-        expr: node_load15 > count by (instance) (node_cpu_seconds_total{mode="idle"})
+        expr: node_load15 > count without (cpu, mode) (node_cpu_seconds_total{mode="idle"})
         for: 15m
         labels:
           severity: warning

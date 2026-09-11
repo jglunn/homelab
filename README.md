@@ -87,6 +87,20 @@ docker compose ps   # verify all services reach healthy state
 - **`no-new-privileges`** on every non-privileged container
 - **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager pushes firing and resolved notifications to [ntfy.sh](https://ntfy.sh) via a small bridge service (`ntfy-bridge/bridge.py`, ~60 lines of stdlib Python) that formats the Alertmanager webhook into a readable title and body
 
+## Testing alert rules
+
+`promtool` ships in the Prometheus image, so rule files can be syntax-checked and unit-tested without installing anything on the host. Unit tests live in `prometheus/rules/tests/` and run against the same bind mount the Prometheus container uses; `--no-deps` keeps compose from starting the exporters just to run a check.
+
+```bash
+# Syntax-check every rule file
+docker compose run --rm --no-deps --entrypoint sh prometheus \
+  -c 'promtool check rules /etc/prometheus/rules/*.yml'
+
+# Run the rule unit tests
+docker compose run --rm --no-deps --entrypoint sh prometheus \
+  -c 'promtool test rules /etc/prometheus/rules/tests/*_test.yml'
+```
+
 ## Screenshots
 
 <img width="1624" height="805" alt="image" src="https://github.com/user-attachments/assets/d9678325-b60d-4e46-8917-dd74443e4014" />
