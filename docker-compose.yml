@@ -93,24 +93,6 @@ services:
     mem_limit: 256m
     cpus: 0.5
 
-  ntfy-bridge:
-    <<: *common
-    image: python:3.12-alpine
-    container_name: ntfy-bridge
-    command: ["python", "-u", "/app/bridge.py"]
-    environment:
-      - NTFY_TOPIC=${NTFY_TOPIC}
-    volumes:
-      - ./ntfy-bridge/bridge.py:/app/bridge.py:ro
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-    mem_limit: 48m
-    cpus: 0.1
-
   alertmanager:
     <<: *common
     image: prom/alertmanager:v0.28.1
@@ -118,6 +100,9 @@ services:
     volumes:
       - ./alertmanager/config.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
+    configs:
+      - source: ntfy_url
+        target: /etc/alertmanager/ntfy_url
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
       interval: 10s
@@ -154,3 +139,10 @@ volumes:
   prometheus-data:
   grafana-data:
   alertmanager-data:
+
+configs:
+  # Rendered by Compose from NTFY_TOPIC in .env at `up` time, so the topic never
+  # lands in a tracked file. Alertmanager reads it through `url_file`.
+  # Inline `content` needs Docker Compose >= 2.23.1.
+  ntfy_url:
+    content: "https://ntfy.sh/${NTFY_TOPIC}"

@@ -13,7 +13,7 @@ flowchart LR
     N[node-exporter] --> P
     C[cAdvisor] --> P
     P --> G
-    P --> AM[Alertmanager] --> BR[ntfy-bridge] --> NT[ntfy.sh] --> Phone
+    P --> AM[Alertmanager] --> NT[ntfy.sh] --> Phone
 ```
 
 Blocky and Grafana are bound to the host's Tailscale IP. Prometheus, node-exporter, and cAdvisor are reachable only inside the Docker bridge network.
@@ -25,7 +25,6 @@ Blocky and Grafana are bound to the host's Tailscale IP. Prometheus, node-export
 | Blocky | DNS with ad-blocking, DoT upstream to Quad9 | 53 |
 | Prometheus | Metrics storage and scraping | internal |
 | Alertmanager | Alert routing to ntfy.sh push notifications | internal |
-| ntfy-bridge | Translates Alertmanager webhooks into ntfy.sh pushes | internal |
 | Grafana | Dashboards (provisioned as code) | 3000 |
 | node-exporter | Host metrics | internal |
 | cAdvisor | Container metrics | internal |
@@ -85,10 +84,9 @@ docker compose ps   # verify all services reach healthy state
 docker compose pull && docker compose up -d
 ```
 
-- **Change alert rules** — edit `prometheus/rules/`, validate the config together with every rule file it references, then reload Prometheus in place (no restart needed):
+- **Change alert rules** — edit `prometheus/rules/`, check and test the files (see [Testing alert rules](#testing-alert-rules)), then reload Prometheus in place without a restart:
 
 ```bash
-docker compose run --rm --entrypoint /bin/promtool prometheus check config /etc/prometheus/prometheus.yml
 docker compose kill -s HUP prometheus
 ```
 
@@ -106,7 +104,21 @@ docker compose exec grafana grafana cli admin reset-admin-password <new-password
 - **Dashboards as code** — committed JSON under `grafana/provisioning/dashboards/`, with datasource variables pre-resolved
 - **Log rotation** — 10MB × 3 files per service to protect the SD card
 - **`no-new-privileges`** on every container
-- **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager pushes firing and resolved notifications to [ntfy.sh](https://ntfy.sh) via a small bridge service (`ntfy-bridge/bridge.py`, stdlib Python) that formats the Alertmanager webhook into a readable title and body
+- **Alerting** — Prometheus rules in `prometheus/rules/` cover host, container, DNS, and self-monitoring; Alertmanager posts its webhook JSON straight to [ntfy.sh](https://ntfy.sh), which formats it with ntfy's built-in `alertmanager` template (server ≥ 2.14). A `Priority` header maps severity to push priority (critical → urgent, re-notified hourly; everything else → high), and resolved notifications are sent too. The topic never touches a tracked file: Compose renders `https://ntfy.sh/${NTFY_TOPIC}` from `.env` into the container as an inline `configs` entry, which Alertmanager reads via `url_file`
+
+## Testing alert rules
+
+`promtool` ships in the Prometheus image, so rule files can be syntax-checked and unit-tested without installing anything on the host. Unit tests live in `prometheus/rules/tests/` and run against the same bind mount the Prometheus container uses.
+
+```bash
+# Syntax-check every rule file
+docker compose run --rm --entrypoint sh prometheus \
+  -c 'promtool check rules /etc/prometheus/rules/*.yml'
+
+# Run the rule unit tests
+docker compose run --rm --entrypoint sh prometheus \
+  -c 'promtool test rules /etc/prometheus/rules/tests/*_test.yml'
+```
 
 ## Screenshots
 
