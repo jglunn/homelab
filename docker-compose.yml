@@ -1,17 +1,18 @@
 # Monitoring + DNS stack for Raspberry Pi. All services are bound to the
 # host's Tailscale IP only, so nothing is reachable on the public interface.
 
-x-logging: &default-logging
-  driver: json-file
-  options:
-    max-size: "10m"
-    max-file: "3"
+x-common: &common
+  restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
 
 services:
   blocky:
+    <<: *common
     image: ghcr.io/0xerr0r/blocky:v0.29.0
     container_name: blocky
-    restart: unless-stopped
     ports:
       - "${TS_IP}:53:53/tcp"
       - "${TS_IP}:53:53/udp"
@@ -19,52 +20,38 @@ services:
       - TZ=${TZ}
     volumes:
       - ./blocky/config.yml:/app/config.yml:ro
-    networks: [homelab]
     healthcheck:
       test: ["CMD", "/app/blocky", "healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 128m
-          cpus: '0.3'
+    mem_limit: 128m
+    cpus: 0.3
 
   node-exporter:
+    <<: *common
     image: prom/node-exporter:v1.11.1
     container_name: node-exporter
-    restart: unless-stopped
     command:
       - '--path.rootfs=/host'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     pid: host
     volumes:
       - /:/host:ro,rslave
-    networks: [homelab]
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 64m
-          cpus: '0.1'
+    mem_limit: 64m
+    cpus: 0.1
 
   cadvisor:
+    <<: *common
     image: ghcr.io/google/cadvisor:0.56.2
     container_name: cadvisor
-    restart: unless-stopped
     privileged: true
     devices:
       - /dev/kmsg
@@ -73,112 +60,77 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-    networks: [homelab]
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 15s
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 192m
-          cpus: '0.5'
+    mem_limit: 192m
+    cpus: 0.5
 
   prometheus:
+    <<: *common
     image: prom/prometheus:v3.11.0
     container_name: prometheus
-    restart: unless-stopped
+    # `command` replaces the image's CMD, which is where the config and data
+    # paths normally come from, so both have to be restated here.
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=15d'
       - '--storage.tsdb.retention.size=2GB'
-      - '--web.enable-lifecycle'
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
-    networks: [homelab]
-    depends_on:
-      blocky:
-        condition: service_healthy
-      node-exporter:
-        condition: service_healthy
-      cadvisor:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 15s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 256m
-          cpus: '0.5'
+    mem_limit: 256m
+    cpus: 0.5
 
   ntfy-bridge:
+    <<: *common
     image: python:3.12-alpine
     container_name: ntfy-bridge
-    restart: unless-stopped
     command: ["python", "-u", "/app/bridge.py"]
     environment:
       - NTFY_TOPIC=${NTFY_TOPIC}
     volumes:
       - ./ntfy-bridge/bridge.py:/app/bridge.py:ro
-    networks: [homelab]
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 48m
-          cpus: '0.1'
+    mem_limit: 48m
+    cpus: 0.1
 
   alertmanager:
+    <<: *common
     image: prom/alertmanager:v0.28.1
     container_name: alertmanager
-    restart: unless-stopped
     volumes:
       - ./alertmanager/config.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
-    networks: [homelab]
-    depends_on:
-      ntfy-bridge:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 15s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 64m
-          cpus: '0.2'
+    mem_limit: 64m
+    cpus: 0.2
 
   grafana:
+    <<: *common
     image: grafana/grafana:12.4.3
     container_name: grafana
-    restart: unless-stopped
     ports:
       - "${TS_IP}:3000:3000"
     environment:
@@ -189,28 +141,14 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
-    networks: [homelab]
-    depends_on:
-      prometheus:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:3000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 60s
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-          cpus: '0.5'
-
-networks:
-  homelab:
-    driver: bridge
+    mem_limit: 512m
+    cpus: 0.5
 
 volumes:
   prometheus-data:

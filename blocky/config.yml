@@ -2,9 +2,14 @@
 # - DoT upstream to Quad9 for encrypted resolution
 # - Ad-blocking via StevenBlack's consolidated hosts list, refreshed every 24h
 # - Prometheus metrics exposed on :4000/metrics
+#
+# Anything not set here is a Blocky default: DNS on :53, blocked names
+# answered with 0.0.0.0 (zeroIp), log level info, metrics path /metrics.
 
-# bootstrapDns uses raw Quad9 IPs so the resolver can reach dns.quad9.net
-# before any DNS is available (chicken-and-egg on first start).
+# bootstrapDns is the resolver Blocky uses before its own upstreams work: it
+# resolves dns.quad9.net for the DoT upstream, and Blocky's HTTP client also
+# goes through it to download the denylists. Raw Quad9 IPs avoid the
+# chicken-and-egg on first start.
 bootstrapDns:
   - upstream: 9.9.9.9
   - upstream: 149.112.112.112
@@ -20,9 +25,8 @@ blocking:
       - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
   clientGroupsBlock:
     default: [ads]
-  blockType: zeroIp
   loading:
-    refreshPeriod: 24h
+    refreshPeriod: 24h  # Blocky's default is 4h
 
 caching:
   minTime: 5m
@@ -30,12 +34,7 @@ caching:
   prefetching: true
 
 ports:
-  dns: 53
   http: 4000
-
-log:
-  level: info
 
 prometheus:
   enable: true
-  path: /metrics
